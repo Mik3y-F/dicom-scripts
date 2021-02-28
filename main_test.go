@@ -26,7 +26,7 @@ func TestDicomService_CreateDicomInstances(t *testing.T) {
 			s := &DicomService{
 				googleDicomAPI: tt.fields.googleDicomAPI,
 			}
-			if err := s.CreateDicomInstances(tt.args.ctx, tt.args.dicomFilePath); (err != nil) != tt.wantErr {
+			if err := s.CreateDicomInstance(tt.args.ctx, tt.args.dicomFilePath); (err != nil) != tt.wantErr {
 				t.Errorf("DicomService.CreateDicomInstances() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

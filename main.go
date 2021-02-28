@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-xmlfmt/xmlfmt"
 	"google.golang.org/api/healthcare/v1"
 )
 
@@ -78,30 +79,26 @@ func NewDicomStoreService(googleDicomAPI *GoogleDicomAPI) *DicomStoreService {
 }
 
 func (s *DicomStoreService) DeidentifyDicomStore(ctx context.Context) error {
+
+	// Get env variables
 	sourceDicomStore := os.Getenv(SourceDicomStore)
 	destinationDicomStore := os.Getenv(DestinationDicomStore)
 
-	datasetsService := s.GoogleDicomAPI.HealthcareService.Projects.Locations.Datasets
+	datasetsService := s.GoogleDicomAPI.HealthcareService.Projects.Locations.Datasets.DicomStores
 
-	// TODO!: Refer to docs on the correct initialisation for the parent path
-	parent := fmt.Sprintf("projects/%s/locations/%s", ProjectID, Location)
-
-	req := &healthcare.DeidentifyDatasetRequest{
-		DestinationDataset: fmt.Sprintf("%s/datasets/%s", parent, destinationDicomStore),
+	req := &healthcare.DeidentifyDicomStoreRequest{
+		DestinationStore: fmt.Sprintf("%s/dicomStores/%s", s.GoogleDicomAPI.Dataset.Name, destinationDicomStore),
 		Config: &healthcare.DeidentifyConfig{
 			Dicom: &healthcare.DicomConfig{
-				KeepList: &healthcare.TagFilterList{
-					Tags: []string{},
-				},
 				FilterProfile: "MINIMAL_KEEP_LIST_PROFILE",
 			},
 			Image: &healthcare.ImageConfig{
-				TextRedactionMode: "REDUCT_SENSITIVE_TEXT",
+				TextRedactionMode: "REDACT_SENSITIVE_TEXT",
 			},
 		},
 	}
 
-	sourceName := fmt.Sprintf("%s/datasets/%s", parent, sourceDicomStore)
+	sourceName := fmt.Sprintf("%s/dicomStores/%s", s.GoogleDicomAPI.Dataset.Name, sourceDicomStore)
 	resp, err := datasetsService.Deidentify(sourceName, req).Do()
 	if err != nil {
 		return fmt.Errorf("Deidentify: %v", err)
@@ -127,8 +124,8 @@ func (s *DicomStoreService) DeidentifyDicomStore(ctx context.Context) error {
 
 }
 
-// CreateDicomInstances creates dicom instances in the cloud within special abstractions called dicomStores
-func (s *DicomService) CreateDicomInstances(ctx context.Context, dicomFilePath string) error {
+// CreateDicomInstance creates dicom instances in the cloud within special abstractions called dicomStores
+func (s *DicomService) CreateDicomInstance(ctx context.Context, dicomFilePath string) error {
 
 	// must get env otherwise the operation fails is returned
 	sourceDicomStore := os.Getenv(SourceDicomStore)
@@ -161,7 +158,8 @@ func (s *DicomService) CreateDicomInstances(ctx context.Context, dicomFilePath s
 	if resp.StatusCode > 299 {
 		return fmt.Errorf("StoreInstances: status %d %s: %s", resp.StatusCode, resp.Status, respBytes)
 	}
-	fmt.Printf("%s", respBytes)
+	x := xmlfmt.FormatXML(string(respBytes), "\t", "  ")
+	print(x)
 
 	return nil
 
@@ -179,9 +177,9 @@ func main() {
 
 	// create a DICOM instance of the read dicom on the gcloud
 	dicomService := NewDicomService(dicomApI)
-	err = dicomService.CreateDicomInstances(ctx, "test-dicoms/case1_008.dcm")
+	err = dicomService.CreateDicomInstance(ctx, "test-dicoms/case1_044.dcm")
 	if err != nil {
-		fmt.Printf("unable to Create a Dicom instance on gcloud: %v \n", err)
+		fmt.Printf("\nunable to Create a Dicom instance on gcloud: %v \n", err)
 		os.Exit(1)
 	}
 
@@ -189,7 +187,9 @@ func main() {
 	dicomStoreService := NewDicomStoreService(dicomApI)
 	err = dicomStoreService.DeidentifyDicomStore(ctx)
 	if err != nil {
-		fmt.Printf("unable to Deidentify DICOMs in DICOM Store: %v \n", err)
+		fmt.Printf("\nunable to Deidentify DICOMs in DICOM Store: %v \n", err)
 		os.Exit(1)
 	}
+
+	fmt.Printf("Dicom Successfully Deidentified")
 }

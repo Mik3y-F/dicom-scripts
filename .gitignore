@@ -15,3 +15,5 @@
 # vendor/
 
 *env.sh
+*commands.sh
+response.json
