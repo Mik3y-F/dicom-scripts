@@ -44,6 +44,10 @@ This script has three primary functions:
 - `CreateDicomInstance()`: Uploads a DICOM file from a specified path to the source DICOM store in Google Cloud.
 - `DeidentifyDicomStore()`: Deidentifies the DICOM instances in the source DICOM store and moves them to the destination DICOM store.
 
+## How it works
+
+At the moment. The path to the DICOM to be anonymized is hardcoded ie. `main.go:180` This will be improved over time.
+
 ## License
 
 This project is is licensed under the MIT license. See [LICENSE](LICENSE) for the full license text.
